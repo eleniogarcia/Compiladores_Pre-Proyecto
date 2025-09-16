@@ -1,0 +1,103 @@
+/* ycalc.cup - parser que solo construye AST; chequeos semánticos en el visitor */
+
+import java_cup.runtime.*;
+
+parser code {:
+    /* solo manejo de errores (sin tabla en el parser) */
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer("Error");
+        if (info instanceof java_cup.runtime.Symbol) {
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+            if (s.left >= 0) {
+                m.append(" in line " + (s.left+1));
+                if (s.right >= 0) m.append(", column " + (s.right+1));
+            }
+        }
+        m.append(" : " + message);
+        System.err.println(m);
+    }
+
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        System.exit(1);
+    }
+:}
+
+/* ---------- Terminales (tipados) ---------- */
+terminal String ID;
+terminal Integer NUMBER;
+
+terminal VOID, MAIN, INT;
+terminal SEMI, PLUS, MINUS, TIMES, DIVIDE, LPAREN, RPAREN, LBRACE, RBRACE, ASSIGN;
+
+/* ---------- No terminales (tipados con clases AST) ---------- */
+non terminal ProgramNode program;
+non terminal DeclListNode decls;
+non terminal DeclNode decl;
+non terminal StmtListNode stmts;
+non terminal StmtNode stmt;
+non terminal ExprNode expr;
+
+/* ---------- Precedencias ---------- */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+
+/* ---------------- Gramática (acciones: SOLO construyen nodos AST) ---------------- */
+
+program ::= VOID MAIN LPAREN RPAREN LBRACE decls:ds stmts:st RBRACE
+          {:
+               RESULT = new ProgramNode(ds, st);
+               System.out.println("Programa válido.");
+          :}
+          ;
+
+/* declaraciones */
+decls ::=
+         {: RESULT = new DeclListNode(); :}
+       | decls:dl decl:d
+         {:
+             dl.add(d);
+             RESULT = dl;
+         :}
+       ;
+
+decl ::= INT ID:id SEMI
+       {:
+           RESULT = new DeclNode(id, "int");
+       :}
+       ;
+
+/* sentencias */
+stmts ::=
+         {: RESULT = new StmtListNode(); :}
+       | stmts:sl stmt:s
+         {:
+             sl.add(s);
+             RESULT = sl;
+         :}
+       ;
+
+stmt ::= ID:id ASSIGN expr:e SEMI
+       {:
+           RESULT = new AssignNode(id, e);
+       :}
+       ;
+
+/* expresiones */
+expr ::= expr:left PLUS expr:right
+         {: RESULT = new BinOpNode("+", left, right); :}
+       | expr:left MINUS expr:right
+         {: RESULT = new BinOpNode("-", left, right); :}
+       | expr:left TIMES expr:right
+         {: RESULT = new BinOpNode("*", left, right); :}
+       | expr:left DIVIDE expr:right
+         {: RESULT = new BinOpNode("/", left, right); :}
+       | LPAREN expr:e RPAREN
+         {: RESULT = e; :}
+       | NUMBER:n
+         {: RESULT = new NumNode(n); :}
+       | ID:id
+         {:
+            RESULT = new IdNode(id);
+         :}
+       ;
