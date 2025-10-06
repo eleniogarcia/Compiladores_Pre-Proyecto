@@ -236,3 +236,92 @@ class CodeGenerator implements ASTVisitor {
         }
     }
 }
+
+class X86_64Generator implements ASTVisitor {
+    private final List<String> data = new ArrayList<>();
+    private final List<String> text = new ArrayList<>();
+    private String lastAssignedVar = null;
+
+    public String getAsm() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("section .data\n");
+        for (String d : data) sb.append(d).append("\n");
+
+        sb.append("\nsection .text\n");
+        sb.append("global main\n");
+        sb.append("main:\n");
+        for (String t : text) sb.append("    ").append(t).append("\n");
+
+        // devolver último valor asignado (en RAX)
+        if (lastAssignedVar != null) {
+            sb.append("    mov rax, [").append(lastAssignedVar).append("]\n");
+        } else {
+            sb.append("    mov rax, 0\n");
+        }
+
+        sb.append("    ret\n");
+        return sb.toString();
+    }
+
+    private void emitData(String s) { data.add(s); }
+    private void emitText(String s) { text.add(s); }
+
+    @Override
+    public void visit(ProgramNode node) {
+        if (node.decls != null) node.decls.accept(this);
+        if (node.stmts != null) node.stmts.accept(this);
+    }
+
+    @Override
+    public void visit(DeclListNode node) {
+        for (DeclNode d : node.decls) d.accept(this);
+    }
+
+    @Override
+    public void visit(DeclNode node) {
+        emitData(node.name + " dq 0");
+    }
+
+    @Override
+    public void visit(StmtListNode node) {
+        for (StmtNode s : node.stmts) s.accept(this);
+    }
+
+    @Override
+    public void visit(AssignNode node) {
+        generateExpr(node.expr);
+        emitText("mov [" + node.name + "], rax");
+        lastAssignedVar = node.name;
+    }
+
+    @Override public void visit(BinOpNode node) { }
+    @Override public void visit(NumNode node) { }
+    @Override public void visit(IdNode node) { }
+
+    /* ---- Generador de expresiones ---- */
+    private void generateExpr(ExprNode e) {
+        if (e instanceof NumNode) {
+            emitText("mov rax, " + ((NumNode) e).value);
+        } else if (e instanceof IdNode) {
+            emitText("mov rax, [" + ((IdNode) e).name + "]");
+        } else if (e instanceof BinOpNode) {
+            BinOpNode b = (BinOpNode) e;
+            generateExpr(b.left);
+            emitText("push rax");
+            generateExpr(b.right);
+            emitText("mov rbx, rax");
+            emitText("pop rax");
+            switch (b.op) {
+                case "+": emitText("add rax, rbx"); break;
+                case "-": emitText("sub rax, rbx"); break;
+                case "*": emitText("imul rax, rbx"); break;
+                case "/":
+                    emitText("xor rdx, rdx");
+                    emitText("idiv rbx");
+                    break;
+            }
+        }
+    }
+}
+
+
