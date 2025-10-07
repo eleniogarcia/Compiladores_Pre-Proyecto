@@ -238,33 +238,33 @@ class CodeGenerator implements ASTVisitor {
 }
 
 class X86_64Generator implements ASTVisitor {
-    private final List<String> data = new ArrayList<>();
     private final List<String> text = new ArrayList<>();
-    private String lastAssignedVar = null;
+    private final Map<String, Integer> varOffsets = new LinkedHashMap<>();
+    private int stackOffset = 0;
 
     public String getAsm() {
         StringBuilder sb = new StringBuilder();
-        sb.append("section .data\n");
-        for (String d : data) sb.append(d).append("\n");
 
-        sb.append("\nsection .text\n");
-        sb.append("global main\n");
         sb.append("main:\n");
-        for (String t : text) sb.append("    ").append(t).append("\n");
+        sb.append("        pushq   %rbp\n");
+        sb.append("        movq    %rsp, %rbp\n");
 
-        // devolver último valor asignado (en RAX)
-        if (lastAssignedVar != null) {
-            sb.append("    mov rax, [").append(lastAssignedVar).append("]\n");
-        } else {
-            sb.append("    mov rax, 0\n");
-        }
+        // reservar espacio local si hay variables
+        int totalVars = varOffsets.size();
+        if (totalVars > 0)
+            sb.append("        subq    $" + (totalVars * 8) + ", %rsp\n");
 
-        sb.append("    ret\n");
+        for (String t : text)
+            sb.append("        ").append(t).append("\n");
+
+        sb.append("        movq    $0, %rax\n");
+        sb.append("        leave\n");
+        sb.append("        ret\n");
+
         return sb.toString();
     }
 
-    private void emitData(String s) { data.add(s); }
-    private void emitText(String s) { text.add(s); }
+    private void emit(String s) { text.add(s); }
 
     @Override
     public void visit(ProgramNode node) {
@@ -279,7 +279,9 @@ class X86_64Generator implements ASTVisitor {
 
     @Override
     public void visit(DeclNode node) {
-        emitData(node.name + " dq 0");
+        stackOffset -= 8; // reservar 8 bytes
+        varOffsets.put(node.name, stackOffset);
+        //emit("# variable " + node.name + " en " + stackOffset + "(%rbp)");
     }
 
     @Override
@@ -290,8 +292,8 @@ class X86_64Generator implements ASTVisitor {
     @Override
     public void visit(AssignNode node) {
         generateExpr(node.expr);
-        emitText("mov [" + node.name + "], rax");
-        lastAssignedVar = node.name;
+        int offset = varOffsets.get(node.name);
+        emit("movq    %rax, " + offset + "(%rbp)");
     }
 
     @Override public void visit(BinOpNode node) { }
@@ -301,27 +303,32 @@ class X86_64Generator implements ASTVisitor {
     /* ---- Generador de expresiones ---- */
     private void generateExpr(ExprNode e) {
         if (e instanceof NumNode) {
-            emitText("mov rax, " + ((NumNode) e).value);
+            emit("movq    $" + ((NumNode) e).value + ", %rax");
         } else if (e instanceof IdNode) {
-            emitText("mov rax, [" + ((IdNode) e).name + "]");
+            int offset = varOffsets.get(((IdNode) e).name);
+            emit("movq    " + offset + "(%rbp), %rax");
         } else if (e instanceof BinOpNode) {
             BinOpNode b = (BinOpNode) e;
-            generateExpr(b.left);
-            emitText("push rax");
+
+            // Generar lado derecho primero
             generateExpr(b.right);
-            emitText("mov rbx, rax");
-            emitText("pop rax");
+            emit("movq    %rax, %rbx");
+            // Luego lado izquierdo
+            generateExpr(b.left);
+
             switch (b.op) {
-                case "+": emitText("add rax, rbx"); break;
-                case "-": emitText("sub rax, rbx"); break;
-                case "*": emitText("imul rax, rbx"); break;
+                case "+": emit("addq    %rbx, %rax"); break;
+                case "-": emit("subq    %rbx, %rax"); break;
+                case "*": emit("imulq   %rbx, %rax"); break;
                 case "/":
-                    emitText("xor rdx, rdx");
-                    emitText("idiv rbx");
+                    emit("cqto");
+                    emit("idivq   %rbx");
                     break;
             }
         }
     }
 }
+
+
 
 

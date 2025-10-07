@@ -29,16 +29,6 @@ public class Main {
             try (PrintWriter out = new PrintWriter("program.asm")) {
                 out.print(asm);
             }
-
-            System.out.println("Código ensamblador generado en: program.asm ✅");
-            System.out.println("\n🧩 Para compilar y ejecutar en Windows:");
-            System.out.println("-------------------------------------------------");
-            System.out.println("1️⃣  nasm -f win64 program.asm -o program.obj");
-            System.out.println("2️⃣  gcc program.obj -o program.exe");
-            System.out.println("3️⃣  ./program.exe");
-            System.out.println("4️⃣  echo %ERRORLEVEL%");
-            System.out.println("-------------------------------------------------\n");
-
         } catch (Exception e) {
             e.printStackTrace();
         }
