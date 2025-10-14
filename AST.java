@@ -310,23 +310,27 @@ class X86_64Generator implements ASTVisitor {
         } else if (e instanceof BinOpNode) {
             BinOpNode b = (BinOpNode) e;
 
-            // Generar lado derecho primero
-            generateExpr(b.right);
-            emit("movq    %rax, %rbx");
-            // Luego lado izquierdo
+            // Evaluar lado izquierdo -> %rax
             generateExpr(b.left);
+            emit("movq    %rax, %rcx");  // guardar el resultado izq en rcx
+
+            // Evaluar lado derecho -> %rax
+            generateExpr(b.right);
 
             switch (b.op) {
-                case "+": emit("addq    %rbx, %rax"); break;
-                case "-": emit("subq    %rbx, %rax"); break;
-                case "*": emit("imulq   %rbx, %rax"); break;
+                case "+": emit("addq    %rcx, %rax"); break;
+                case "-": emit("subq    %rcx, %rax"); break;
+                case "*": emit("imulq   %rcx, %rax"); break;
                 case "/":
+                    emit("movq    %rax, %rbx");  // divisor
+                    emit("movq    %rcx, %rax");  // dividendo
                     emit("cqto");
                     emit("idivq   %rbx");
                     break;
             }
         }
     }
+
 }
 
 
