@@ -16,7 +16,9 @@ class ProgramNode implements ASTNode {
 
 class DeclListNode implements ASTNode {
     List<DeclNode> decls = new ArrayList<>();
+
     void add(DeclNode d) { decls.add(d); }
+
     @Override
     public void accept(ASTVisitor v) { v.visit(this); }
 }
@@ -24,7 +26,20 @@ class DeclListNode implements ASTNode {
 class DeclNode implements ASTNode {
     String name;
     String type;
-    DeclNode(String name, String type) { this.name = name; this.type = type; }
+    ExprNode init;  // inicialización opcional
+
+    DeclNode(String name, String type) {
+        this.name = name;
+        this.type = type;
+        this.init = null;
+    }
+
+    DeclNode(String name, String type, ExprNode init) {
+        this.name = name;
+        this.type = type;
+        this.init = init;
+    }
+
     @Override
     public void accept(ASTVisitor v) { v.visit(this); }
 }
@@ -32,6 +47,66 @@ class DeclNode implements ASTNode {
 class StmtListNode implements ASTNode {
     List<StmtNode> stmts = new ArrayList<>();
     void add(StmtNode s) { stmts.add(s); }
+    @Override
+    public void accept(ASTVisitor v) { v.visit(this); }
+}
+
+class BlockNode implements ASTNode {
+    DeclListNode decls;
+    StmtListNode stmts;
+
+    BlockNode(DeclListNode d, StmtListNode s) {
+        this.decls = d;
+        this.stmts = s;
+    }
+
+    @Override
+    public void accept(ASTVisitor v) { v.visit(this); }
+}
+
+class IfNode extends StmtNode {
+    ExprNode condition;
+    BlockNode thenBlock;
+    BlockNode elseBlock;
+
+    IfNode(ExprNode cond, BlockNode thenBlk, BlockNode elseBlk) {
+        this.condition = cond;
+        this.thenBlock = thenBlk;
+        this.elseBlock = elseBlk;
+    }
+
+    @Override
+    public void accept(ASTVisitor v) { v.visit(this); }
+}
+
+class WhileNode extends StmtNode {
+    ExprNode condition;
+    BlockNode body;
+
+    WhileNode(ExprNode cond, BlockNode body) {
+        this.condition = cond;
+        this.body = body;
+    }
+
+    @Override
+    public void accept(ASTVisitor v) { v.visit(this); }
+}
+
+class ReturnNode extends StmtNode {
+    ExprNode expr;
+
+    ReturnNode(ExprNode e) { this.expr = e; }
+
+    @Override
+    public void accept(ASTVisitor v) { v.visit(this); }
+}
+
+class UnaryOpNode extends ExprNode {
+    String op;
+    ExprNode expr;
+
+    UnaryOpNode(String op, ExprNode e) { this.op = op; this.expr = e; }
+
     @Override
     public void accept(ASTVisitor v) { v.visit(this); }
 }
@@ -78,14 +153,23 @@ class IdNode extends ExprNode {
 
 interface ASTVisitor {
     void visit(ProgramNode node);
+    void visit(BlockNode node);
     void visit(DeclListNode node);
     void visit(DeclNode node);
     void visit(StmtListNode node);
     void visit(AssignNode node);
+    void visit(IfNode node);
+    void visit(WhileNode node);
+    void visit(ReturnNode node);
     void visit(BinOpNode node);
+    void visit(UnaryOpNode node);
     void visit(NumNode node);
     void visit(IdNode node);
 }
+
+
+
+/* ---------------- Interpreter ---------------- */
 
 class Interpreter implements ASTVisitor {
     private SymbolTable symtab = new SymbolTable();
@@ -94,20 +178,66 @@ class Interpreter implements ASTVisitor {
 
     @Override
     public void visit(ProgramNode node) {
-        if (node.decls != null) node.decls.accept(this);
-        if (node.stmts != null) node.stmts.accept(this);
-        symtab.printTable(); // al final muestro resultados
+        List<AssignNode> initializations = new ArrayList<>();
+
+        // === PASO 1: Declarar TODAS las variables ===
+        if (node.decls != null) {
+            for (DeclNode d : node.decls.decls) {
+                // 1. Agregar la variable a la SymbolTable (valor = null)
+                symtab.add(d.name, d.type);
+
+                // 2. Si tiene inicializador, crear una AssignNode para la SEGUNDA PASADA.
+                if (d.init != null) {
+                    initializations.add(new AssignNode(d.name, d.init));
+                }
+            }
+        }
+
+        // === PASO 2: Ejecutar Inicializaciones y Sentencias ===
+
+        // 1. Ejecutar todas las asignaciones de inicialización
+        // Al ejecutar aquí, 'x' ya está en symtab cuando 'y = x + 1' lee 'x'.
+        for (AssignNode assign : initializations) {
+            assign.accept(this);
+        }
+
+        // 2. Ejecutar las sentencias normales
+        if (node.stmts != null) {
+            node.stmts.accept(this);
+        }
+
+        symtab.printTable();
     }
 
     @Override
-    public void visit(DeclListNode node) {
-        for (DeclNode d : node.decls) d.accept(this);
+    public void visit(BlockNode node) {
+        // Misma lógica de dos pases para bloques.
+        List<AssignNode> blockInitializations = new ArrayList<>();
+
+        if (node.decls != null) {
+            for (DeclNode d : node.decls.decls) {
+                symtab.add(d.name, d.type);
+                if (d.init != null) {
+                    blockInitializations.add(new AssignNode(d.name, d.init));
+                }
+            }
+        }
+
+        for (AssignNode assign : blockInitializations) {
+            assign.accept(this);
+        }
+
+        if (node.stmts != null) {
+            node.stmts.accept(this);
+        }
     }
 
     @Override
-    public void visit(DeclNode node) {
-        symtab.add(node.name, node.type);
-    }
+    public void visit(DeclListNode node) { /* Ignorado, la lógica está en ProgramNode/BlockNode */ }
+
+    @Override
+    public void visit(DeclNode node) { /* Ignorado, la lógica está en ProgramNode/BlockNode */ }
+
 
     @Override
     public void visit(StmtListNode node) {
@@ -117,25 +247,44 @@ class Interpreter implements ASTVisitor {
     @Override
     public void visit(AssignNode node) {
         int value = eval(node.expr);
+        // Note: symtab.assign will set the value and set isInitialized=true
         symtab.assign(node.name, value);
     }
 
     @Override
-    public void visit(BinOpNode node) {
-        // nada acá, se evalúa con eval()
+    public void visit(IfNode node) {
+        int cond = eval(node.condition);
+        if (cond != 0) {
+            node.thenBlock.accept(this);
+        } else if (node.elseBlock != null) {
+            node.elseBlock.accept(this);
+        }
     }
 
     @Override
-    public void visit(NumNode node) {
-        // nada acá, se evalúa con eval()
+    public void visit(WhileNode node) {
+        while (eval(node.condition) != 0) {
+            node.body.accept(this);
+        }
     }
 
     @Override
-    public void visit(IdNode node) {
-        // nada acá, se evalúa con eval()
+    public void visit(ReturnNode node) {
+        if (node.expr != null) {
+            eval(node.expr);
+        }
     }
 
-    /* ---- Evaluador de expresiones ---- */
+    @Override
+    public void visit(BinOpNode node) { }
+    @Override
+    public void visit(UnaryOpNode node) { }
+    @Override
+    public void visit(NumNode node) { }
+    @Override
+    public void visit(IdNode node) { }
+
+    // El método eval() no se cambia ya que contiene la lógica para lanzar la excepción.
     private int eval(ExprNode e) {
         if (e instanceof NumNode) {
             return ((NumNode) e).value;
@@ -143,6 +292,7 @@ class Interpreter implements ASTVisitor {
         if (e instanceof IdNode) {
             SymbolInfo s = symtab.lookup(((IdNode) e).name);
             if (s == null || s.getValue() == null) {
+                // Esta es la línea donde ocurre el error (AST.java:300)
                 throw new RuntimeException("Variable no inicializada: " + ((IdNode) e).name);
             }
             return s.getValue();
@@ -158,11 +308,26 @@ class Interpreter implements ASTVisitor {
                 case "/":
                     if (r == 0) throw new RuntimeException("División por cero");
                     return l / r;
+                case "==": return l == r ? 1 : 0;
+                case "<": return l < r ? 1 : 0;
+                case ">": return l > r ? 1 : 0;
+                case "&&": return (l != 0 && r != 0) ? 1 : 0;
+                case "||": return (l != 0 || r != 0) ? 1 : 0;
+            }
+        }
+        if (e instanceof UnaryOpNode) {
+            UnaryOpNode u = (UnaryOpNode) e;
+            int val = eval(u.expr);
+            switch (u.op) {
+                case "-": return -val;
+                case "!": return val == 0 ? 1 : 0;
             }
         }
         throw new RuntimeException("Expresión no soportada: " + e);
     }
 }
+
+/* ---------------- CodeGenerator ---------------- */
 
 class CodeGenerator implements ASTVisitor {
     private List<String> code = new ArrayList<>();
@@ -175,6 +340,12 @@ class CodeGenerator implements ASTVisitor {
 
     @Override
     public void visit(ProgramNode node) {
+        if (node.decls != null) node.decls.accept(this);
+        if (node.stmts != null) node.stmts.accept(this);
+    }
+
+    @Override
+    public void visit(BlockNode node) {
         if (node.decls != null) node.decls.accept(this);
         if (node.stmts != null) node.stmts.accept(this);
     }
@@ -196,51 +367,85 @@ class CodeGenerator implements ASTVisitor {
 
     @Override
     public void visit(AssignNode node) {
-        // Generar código para la expresión
         generateExpr(node.expr);
         emit("STORE " + node.name);
     }
 
     @Override
-    public void visit(BinOpNode node) {
-        // handled in generateExpr
+    public void visit(IfNode node) {
+        String elseLabel = "L_else_" + System.nanoTime();
+        String endLabel = "L_end_" + System.nanoTime();
+
+        generateExpr(node.condition);
+        emit("JZ " + elseLabel);
+        node.thenBlock.accept(this);
+        emit("JMP " + endLabel);
+        emit("LABEL " + elseLabel);
+        if (node.elseBlock != null) {
+            node.elseBlock.accept(this);
+        }
+        emit("LABEL " + endLabel);
     }
 
     @Override
-    public void visit(NumNode node) {
-        // handled in generateExpr
+    public void visit(WhileNode node) {
+        String startLabel = "L_while_" + System.nanoTime();
+        String endLabel = "L_end_" + System.nanoTime();
+
+        emit("LABEL " + startLabel);
+        generateExpr(node.condition);
+        emit("JZ " + endLabel);
+        node.body.accept(this);
+        emit("JMP " + startLabel);
+        emit("LABEL " + endLabel);
     }
 
     @Override
-    public void visit(IdNode node) {
-        // handled in generateExpr
+    public void visit(ReturnNode node) {
+        if (node.expr != null) {
+            generateExpr(node.expr);
+        }
+        emit("RETURN");
     }
 
-    /* ---- Generador de expresiones ---- */
+    @Override
+    public void visit(BinOpNode node) { }
+
+    @Override
+    public void visit(UnaryOpNode node) { }
+
+    @Override
+    public void visit(NumNode node) { }
+
+    @Override
+    public void visit(IdNode node) { }
+
     private void generateExpr(ExprNode e) {
         if (e instanceof NumNode) {
-            emit("LOADI " + ((NumNode) e).value);
+            emit("LOAD " + ((NumNode) e).value);
         } else if (e instanceof IdNode) {
-            emit("LOAD " + ((IdNode) e).name);
+            emit("LOAD_VAR " + ((IdNode) e).name);
         } else if (e instanceof BinOpNode) {
             BinOpNode b = (BinOpNode) e;
             generateExpr(b.left);
-            emit("PUSH");             // guardar resultado parcial
+            emit("PUSH");
             generateExpr(b.right);
-            switch (b.op) {
-                case "+": emit("ADD"); break;
-                case "-": emit("SUB"); break;
-                case "*": emit("MUL"); break;
-                case "/": emit("DIV"); break;
-            }
+            emit("OP " + b.op);
+        } else if (e instanceof UnaryOpNode) {
+            UnaryOpNode u = (UnaryOpNode) e;
+            generateExpr(u.expr);
+            emit("UNARY " + u.op);
         }
     }
 }
+
+/* ---------------- X86_64Generator ---------------- */
 
 class X86_64Generator implements ASTVisitor {
     private final List<String> text = new ArrayList<>();
     private final Map<String, Integer> varOffsets = new LinkedHashMap<>();
     private int stackOffset = 0;
+    private int labelCounter = 0;
 
     public String getAsm() {
         StringBuilder sb = new StringBuilder();
@@ -249,7 +454,6 @@ class X86_64Generator implements ASTVisitor {
         sb.append("        pushq   %rbp\n");
         sb.append("        movq    %rsp, %rbp\n");
 
-        // reservar espacio local si hay variables
         int totalVars = varOffsets.size();
         if (totalVars > 0)
             sb.append("        subq    $" + (totalVars * 8) + ", %rsp\n");
@@ -266,8 +470,18 @@ class X86_64Generator implements ASTVisitor {
 
     private void emit(String s) { text.add(s); }
 
+    private String newLabel(String prefix) {
+        return prefix + "_" + (labelCounter++);
+    }
+
     @Override
     public void visit(ProgramNode node) {
+        if (node.decls != null) node.decls.accept(this);
+        if (node.stmts != null) node.stmts.accept(this);
+    }
+
+    @Override
+    public void visit(BlockNode node) {
         if (node.decls != null) node.decls.accept(this);
         if (node.stmts != null) node.stmts.accept(this);
     }
@@ -279,9 +493,8 @@ class X86_64Generator implements ASTVisitor {
 
     @Override
     public void visit(DeclNode node) {
-        stackOffset -= 8; // reservar 8 bytes
+        stackOffset -= 8;
         varOffsets.put(node.name, stackOffset);
-        //emit("# variable " + node.name + " en " + stackOffset + "(%rbp)");
     }
 
     @Override
@@ -296,11 +509,63 @@ class X86_64Generator implements ASTVisitor {
         emit("movq    %rax, " + offset + "(%rbp)");
     }
 
-    @Override public void visit(BinOpNode node) { }
-    @Override public void visit(NumNode node) { }
-    @Override public void visit(IdNode node) { }
+    @Override
+    public void visit(IfNode node) {
+        String elseLabel = newLabel("L_else");
+        String endLabel = newLabel("L_end");
 
-    /* ---- Generador de expresiones ---- */
+        generateExpr(node.condition);
+        emit("cmpq    $0, %rax");
+        emit("je      " + elseLabel);
+
+        node.thenBlock.accept(this);
+        emit("jmp     " + endLabel);
+
+        text.add(elseLabel + ":");
+        if (node.elseBlock != null) {
+            node.elseBlock.accept(this);
+        }
+
+        text.add(endLabel + ":");
+    }
+
+    @Override
+    public void visit(WhileNode node) {
+        String startLabel = newLabel("L_while");
+        String endLabel = newLabel("L_end");
+
+        text.add(startLabel + ":");
+        generateExpr(node.condition);
+        emit("cmpq    $0, %rax");
+        emit("je      " + endLabel);
+
+        node.body.accept(this);
+        emit("jmp     " + startLabel);
+
+        text.add(endLabel + ":");
+    }
+
+    @Override
+    public void visit(ReturnNode node) {
+        if (node.expr != null) {
+            generateExpr(node.expr);
+        }
+        emit("leave");
+        emit("ret");
+    }
+
+    @Override
+    public void visit(BinOpNode node) { }
+
+    @Override
+    public void visit(UnaryOpNode node) { }
+
+    @Override
+    public void visit(NumNode node) { }
+
+    @Override
+    public void visit(IdNode node) { }
+
     private void generateExpr(ExprNode e) {
         if (e instanceof NumNode) {
             emit("movq    $" + ((NumNode) e).value + ", %rax");
@@ -310,29 +575,41 @@ class X86_64Generator implements ASTVisitor {
         } else if (e instanceof BinOpNode) {
             BinOpNode b = (BinOpNode) e;
 
-            // Evaluar lado izquierdo -> %rax
             generateExpr(b.left);
-            emit("movq    %rax, %rcx");  // guardar el resultado izq en rcx
+            emit("pushq   %rax");
 
-            // Evaluar lado derecho -> %rax
             generateExpr(b.right);
+            emit("popq    %rcx");
 
             switch (b.op) {
                 case "+": emit("addq    %rcx, %rax"); break;
-                case "-": emit("subq    %rcx, %rax"); break;
+                case "-":
+                    emit("movq    %rcx, %rbx");
+                    emit("subq    %rax, %rbx");
+                    emit("movq    %rbx, %rax");
+                    break;
                 case "*": emit("imulq   %rcx, %rax"); break;
                 case "/":
-                    emit("movq    %rax, %rbx");  // divisor
-                    emit("movq    %rcx, %rax");  // dividendo
+                    emit("movq    %rax, %rbx");
+                    emit("movq    %rcx, %rax");
                     emit("cqto");
                     emit("idivq   %rbx");
                     break;
             }
+        } else if (e instanceof UnaryOpNode) {
+            UnaryOpNode u = (UnaryOpNode) e;
+            generateExpr(u.expr);
+
+            switch (u.op) {
+                case "-":
+                    emit("negq    %rax");
+                    break;
+                case "!":
+                    emit("cmpq    $0, %rax");
+                    emit("sete    %al");
+                    emit("movzbq  %al, %rax");
+                    break;
+            }
         }
     }
-
 }
-
-
-
-

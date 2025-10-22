@@ -1,15 +1,12 @@
-void main() {
-    int a;
-    int b;
-    int c;
-    int e;
+{
+    int x = 1;
+    int z;
+    int y = x + 1;
+    z = x + 3 * 2 * y;
 
-    a = 10;
-    b = 5;
-    c = a + b;
-    e = a * b;
-
-
-
+    if (x == y) then {
+        return 1;
+    } else {
+        return 2;
+    }
 }
-

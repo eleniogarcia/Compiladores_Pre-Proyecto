@@ -6,23 +6,34 @@
 /** CUP generated class containing symbol constants. */
 public class sym {
   /* terminals */
-  public static final int MINUS = 9;
-  public static final int LBRACE = 14;
+  public static final int TIMES = 14;
+  public static final int AND = 16;
+  public static final int LT = 19;
+  public static final int ELSE = 9;
+  public static final int PLUS = 12;
+  public static final int RBRACE = 27;
+  public static final int RPAREN = 25;
+  public static final int OR = 17;
   public static final int INT = 6;
-  public static final int DIVIDE = 11;
-  public static final int MAIN = 5;
-  public static final int NUMBER = 3;
-  public static final int VOID = 4;
-  public static final int SEMI = 7;
-  public static final int PLUS = 8;
-  public static final int EOF = 0;
+  public static final int THEN = 8;
+  public static final int SEMI = 23;
+  public static final int WHILE = 10;
+  public static final int NOT = 21;
+  public static final int RETURN = 11;
+  public static final int IF = 7;
+  public static final int LBRACE = 26;
+  public static final int LPAREN = 24;
+  public static final int GT = 20;
   public static final int ID = 2;
-  public static final int ASSIGN = 16;
+  public static final int EOF = 0;
+  public static final int NUMBER = 3;
+  public static final int DIVIDE = 15;
+  public static final int MAIN = 5;
+  public static final int MINUS = 13;
   public static final int error = 1;
-  public static final int RPAREN = 13;
-  public static final int TIMES = 10;
-  public static final int RBRACE = 15;
-  public static final int LPAREN = 12;
+  public static final int ASSIGN = 22;
+  public static final int EQEQ = 18;
+  public static final int VOID = 4;
   public static final String[] terminalNames = new String[] {
   "EOF",
   "error",
@@ -31,16 +42,27 @@ public class sym {
   "VOID",
   "MAIN",
   "INT",
-  "SEMI",
+  "IF",
+  "THEN",
+  "ELSE",
+  "WHILE",
+  "RETURN",
   "PLUS",
   "MINUS",
   "TIMES",
   "DIVIDE",
+  "AND",
+  "OR",
+  "EQEQ",
+  "LT",
+  "GT",
+  "NOT",
+  "ASSIGN",
+  "SEMI",
   "LPAREN",
   "RPAREN",
   "LBRACE",
-  "RBRACE",
-  "ASSIGN"
+  "RBRACE"
   };
 }
 

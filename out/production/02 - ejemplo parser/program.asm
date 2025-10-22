@@ -1,7 +1,7 @@
 main:
         pushq   %rbp
         movq    %rsp, %rbp
-        subq    $40, %rsp
+        subq    $32, %rsp
         movq    $10, %rax
         movq    %rax, -8(%rbp)
         movq    $5, %rax
@@ -15,7 +15,7 @@ main:
         movq    %rax, %rcx
         movq    -16(%rbp), %rax
         imulq   %rcx, %rax
-        movq    %rax, -40(%rbp)
+        movq    %rax, -32(%rbp)
         movq    $0, %rax
         leave
         ret

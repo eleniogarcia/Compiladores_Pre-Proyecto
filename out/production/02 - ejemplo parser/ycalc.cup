@@ -1,19 +1,21 @@
-/* ycalc.cup - parser que solo construye AST; chequeos semánticos en el visitor */
+/* ==========================================================
+   ycalc.cup - Parser para el lenguaje Mini
+   Construye el AST (no chequea semántica aquí)
+   ========================================================== */
 
 import java_cup.runtime.*;
 
 parser code {:
-    /* solo manejo de errores (sin tabla en el parser) */
     public void report_error(String message, Object info) {
         StringBuffer m = new StringBuffer("Error");
         if (info instanceof java_cup.runtime.Symbol) {
             java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
             if (s.left >= 0) {
-                m.append(" in line " + (s.left+1));
-                if (s.right >= 0) m.append(", column " + (s.right+1));
+                m.append(" en línea " + (s.left + 1));
+                if (s.right >= 0) m.append(", columna " + (s.right + 1));
             }
         }
-        m.append(" : " + message);
+        m.append(": " + message);
         System.err.println(m);
     }
 
@@ -23,81 +25,119 @@ parser code {:
     }
 :}
 
-/* ---------- Terminales (tipados) ---------- */
+/* ---------- Terminales ---------- */
 terminal String ID;
 terminal Integer NUMBER;
 
 terminal VOID, MAIN, INT;
-terminal SEMI, PLUS, MINUS, TIMES, DIVIDE, LPAREN, RPAREN, LBRACE, RBRACE, ASSIGN;
+terminal IF, THEN, ELSE, WHILE, RETURN;
+terminal PLUS, MINUS, TIMES, DIVIDE;
+terminal AND, OR, EQEQ, LT, GT, NOT;
+terminal ASSIGN, SEMI, LPAREN, RPAREN, LBRACE, RBRACE;
 
-/* ---------- No terminales (tipados con clases AST) ---------- */
+/* ---------- No terminales ---------- */
 non terminal ProgramNode program;
+non terminal BlockNode block;     /* ⬅️ AGREGAR ESTA LÍNEA */
 non terminal DeclListNode decls;
 non terminal DeclNode decl;
 non terminal StmtListNode stmts;
 non terminal StmtNode stmt;
 non terminal ExprNode expr;
+non terminal ExprNode optinit;
 
 /* ---------- Precedencias ---------- */
+precedence left OR;
+precedence left AND;
+precedence left EQEQ, LT, GT;
 precedence left PLUS, MINUS;
 precedence left TIMES, DIVIDE;
+precedence right NOT;
 
-/* ---------------- Gramática (acciones: SOLO construyen nodos AST) ---------------- */
+/* ==========================================================
+   Gramática
+   ========================================================== */
 
-program ::= VOID MAIN LPAREN RPAREN LBRACE decls:ds stmts:st RBRACE
+program ::= LBRACE decls:ds stmts:st RBRACE
           {:
-               RESULT = new ProgramNode(ds, st);
-               System.out.println("Programa válido.");
+              RESULT = new ProgramNode(ds, st);
+              System.out.println("Programa Mini válido ✅");
           :}
           ;
 
-/* declaraciones */
+/* ---------- Declaraciones ---------- */
 decls ::=
-         {: RESULT = new DeclListNode(); :}
-       | decls:dl decl:d
-         {:
-             dl.add(d);
-             RESULT = dl;
-         :}
-       ;
+          {: RESULT = new DeclListNode(); :}
+        | decls:dl decl:d
+          {:
+              dl.add(d);
+              RESULT = dl;
+          :}
+        ;
 
 decl ::= INT ID:id SEMI
-       {:
-           RESULT = new DeclNode(id, "int");
-       :}
-       ;
+        {:
+            RESULT = new DeclNode(id, "int");
+        :}
+        | INT ID:id ASSIGN expr:e SEMI
+        {:
+            RESULT = new DeclNode(id, "int", e);
+        :}
 
-/* sentencias */
+
+
+/* ---------- Sentencias ---------- */
 stmts ::=
-         {: RESULT = new StmtListNode(); :}
-       | stmts:sl stmt:s
-         {:
-             sl.add(s);
-             RESULT = sl;
-         :}
-       ;
+          {: RESULT = new StmtListNode(); :}
+        | stmts:sl stmt:s
+          {:
+              sl.add(s);
+              RESULT = sl;
+          :}
+        ;
 
 stmt ::= ID:id ASSIGN expr:e SEMI
-       {:
-           RESULT = new AssignNode(id, e);
-       :}
-       ;
+        {:
+            RESULT = new AssignNode(id, e);
+        :}
+        | RETURN expr:e SEMI
+        {:
+            RESULT = new ReturnNode(e);
+        :}
+        | IF LPAREN expr:cond RPAREN THEN block:thenblk
+        {:
+            RESULT = new IfNode(cond, thenblk, null);
+        :}
+        | IF LPAREN expr:cond RPAREN THEN block:thenblk ELSE block:elseblk
+        {:
+            RESULT = new IfNode(cond, thenblk, elseblk);
+        :}
+        | WHILE LPAREN expr:cond RPAREN block:body
+        {:
+            RESULT = new WhileNode(cond, body);
+        :}
+        ;
+/* ---------- Bloques ---------- */
+block ::= LBRACE decls:ds stmts:st RBRACE
+        {:
+            RESULT = new BlockNode(ds, st);  /* ⬅️ CAMBIAR AQUÍ: era ProgramNode */
+        :}
+        ;
 
-/* expresiones */
-expr ::= expr:left PLUS expr:right
-         {: RESULT = new BinOpNode("+", left, right); :}
-       | expr:left MINUS expr:right
-         {: RESULT = new BinOpNode("-", left, right); :}
-       | expr:left TIMES expr:right
-         {: RESULT = new BinOpNode("*", left, right); :}
-       | expr:left DIVIDE expr:right
-         {: RESULT = new BinOpNode("/", left, right); :}
-       | LPAREN expr:e RPAREN
-         {: RESULT = e; :}
-       | NUMBER:n
-         {: RESULT = new NumNode(n); :}
-       | ID:id
-         {:
-            RESULT = new IdNode(id);
-         :}
-       ;
+
+/* ---------- Expresiones ---------- */
+expr ::=
+          expr:l PLUS expr:r    {: RESULT = new BinOpNode("+", l, r); :}
+        | expr:l MINUS expr:r   {: RESULT = new BinOpNode("-", l, r); :}
+        | expr:l TIMES expr:r   {: RESULT = new BinOpNode("*", l, r); :}
+        | expr:l DIVIDE expr:r  {: RESULT = new BinOpNode("/", l, r); :}
+        | expr:l AND expr:r     {: RESULT = new BinOpNode("&&", l, r); :}
+        | expr:l OR expr:r      {: RESULT = new BinOpNode("||", l, r); :}
+        | expr:l EQEQ expr:r    {: RESULT = new BinOpNode("==", l, r); :}
+        | expr:l LT expr:r      {: RESULT = new BinOpNode("<", l, r); :}
+        | expr:l GT expr:r      {: RESULT = new BinOpNode(">", l, r); :}
+        | NOT expr:e            {: RESULT = new UnaryOpNode("!", e); :}
+        | MINUS expr:e          {: RESULT = new UnaryOpNode("-", e); :}
+        | LPAREN expr:e RPAREN  {: RESULT = e; :}
+        | NUMBER:n              {: RESULT = new NumNode(n); :}
+        | ID:id                 {: RESULT = new IdNode(id); :}
+        ;
