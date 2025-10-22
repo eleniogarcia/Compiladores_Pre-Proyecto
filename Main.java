@@ -6,19 +6,19 @@ public class Main {
             System.out.println("=== Etapa 1: Parsing ===");
             parser p = new parser(new Lexer(new FileReader("test.txt")));
             ProgramNode root = (ProgramNode) p.parse().value;
-            System.out.println("Parsing completado sin errores ✅\n");
+            System.out.println("Parsing completado sin errores\n");
 
             // Etapa 2: Análisis semántico
             System.out.println("=== Etapa 2: Análisis Semántico ===");
             SymbolTableBuilder stb = new SymbolTableBuilder();
             root.accept(stb);
-            System.out.println("Análisis semántico completado ✅\n");
+            System.out.println("Análisis semántico completado\n");
 
             // Etapa 3: Interpretación simbólica (opcional)
             System.out.println("=== Etapa 3: Ejecución simbólica ===");
             Interpreter interp = new Interpreter();
             root.accept(interp);
-            System.out.println("Interpretación finalizada ✅\n");
+            System.out.println("Interpretación finalizada\n");
 
             // Etapa 4: Generación de código ensamblador (x86-64 para Windows)
             System.out.println("=== Etapa 4: Generación de código (x86-64 Windows) ===");

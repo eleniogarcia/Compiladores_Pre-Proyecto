@@ -82,7 +82,7 @@ decl ::= INT ID:id SEMI
         {:
             RESULT = new DeclNode(id, "int", e);
         :}
-
+        ;
 
 
 /* ---------- Sentencias ---------- */

@@ -119,7 +119,7 @@ stmt ::= ID:id ASSIGN expr:e SEMI
 /* ---------- Bloques ---------- */
 block ::= LBRACE decls:ds stmts:st RBRACE
         {:
-            RESULT = new BlockNode(ds, st);  /* ⬅️ CAMBIAR AQUÍ: era ProgramNode */
+            RESULT = new BlockNode(ds, st);
         :}
         ;
 

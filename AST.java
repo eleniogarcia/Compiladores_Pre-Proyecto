@@ -178,30 +178,21 @@ class Interpreter implements ASTVisitor {
 
     @Override
     public void visit(ProgramNode node) {
-        List<AssignNode> initializations = new ArrayList<>();
-
-        // === PASO 1: Declarar TODAS las variables ===
+        // PASO 1: Declarar TODAS las variables e inicializarlas INMEDIATAMENTE
         if (node.decls != null) {
             for (DeclNode d : node.decls.decls) {
-                // 1. Agregar la variable a la SymbolTable (valor = null)
+                // 1. Agregar la variable a la SymbolTable
                 symtab.add(d.name, d.type);
 
-                // 2. Si tiene inicializador, crear una AssignNode para la SEGUNDA PASADA.
+                // 2. Si tiene inicializador, evaluarlo y asignarlo AHORA
                 if (d.init != null) {
-                    initializations.add(new AssignNode(d.name, d.init));
+                    int value = eval(d.init);
+                    symtab.assign(d.name, value);
                 }
             }
         }
 
-        // === PASO 2: Ejecutar Inicializaciones y Sentencias ===
-
-        // 1. Ejecutar todas las asignaciones de inicialización
-        // Al ejecutar aquí, 'x' ya está en symtab cuando 'y = x + 1' lee 'x'.
-        for (AssignNode assign : initializations) {
-            assign.accept(this);
-        }
-
-        // 2. Ejecutar las sentencias normales
+        // PASO 2: Ejecutar las sentencias normales
         if (node.stmts != null) {
             node.stmts.accept(this);
         }
@@ -211,20 +202,17 @@ class Interpreter implements ASTVisitor {
 
     @Override
     public void visit(BlockNode node) {
-        // Misma lógica de dos pases para bloques.
-        List<AssignNode> blockInitializations = new ArrayList<>();
-
+        // Misma lógica: declarar e inicializar inmediatamente
         if (node.decls != null) {
             for (DeclNode d : node.decls.decls) {
                 symtab.add(d.name, d.type);
+                
+                // Si tiene inicializador, evaluarlo y asignarlo AHORA
                 if (d.init != null) {
-                    blockInitializations.add(new AssignNode(d.name, d.init));
+                    int value = eval(d.init);
+                    symtab.assign(d.name, value);
                 }
             }
-        }
-
-        for (AssignNode assign : blockInitializations) {
-            assign.accept(this);
         }
 
         if (node.stmts != null) {
