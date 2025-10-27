@@ -481,10 +481,20 @@ class X86_64Generator implements ASTVisitor {
 
     @Override
     public void visit(DeclNode node) {
+        // 1. Reservar el espacio en la pila para la nueva variable
         stackOffset -= 8;
         varOffsets.put(node.name, stackOffset);
-    }
 
+        // 2. Comprobar si hay una expresión de inicialización (ej: int x = 1;)
+        if (node.init != null) {
+
+            // 3. Generar el código para la expresión (el resultado queda en %rax)
+            generateExpr(node.init);
+
+            // 4. Mover el resultado (%rax) a la dirección de la variable en la pila
+            emit("movq    %rax, " + stackOffset + "(%rbp)");
+        }
+    }
     @Override
     public void visit(StmtListNode node) {
         for (StmtNode s : node.stmts) s.accept(this);
@@ -563,25 +573,91 @@ class X86_64Generator implements ASTVisitor {
         } else if (e instanceof BinOpNode) {
             BinOpNode b = (BinOpNode) e;
 
+            // Genera el lado izquierdo
             generateExpr(b.left);
+            // Guarda el resultado (de la izquierda) en la pila
             emit("pushq   %rax");
 
+            // Genera el lado derecho
             generateExpr(b.right);
+            // Ahora %rax tiene el valor derecho
+            // Saca el valor izquierdo de la pila y ponlo en %rcx
             emit("popq    %rcx");
 
+            // Ahora: %rcx = valor izquierdo, %rax = valor derecho
+
             switch (b.op) {
-                case "+": emit("addq    %rcx, %rax"); break;
-                case "-":
-                    emit("movq    %rcx, %rbx");
-                    emit("subq    %rax, %rbx");
-                    emit("movq    %rbx, %rax");
+                // --- Operadores Aritméticos ---
+                case "+":
+                    emit("addq    %rcx, %rax"); // rax = rcx + rax
                     break;
-                case "*": emit("imulq   %rcx, %rax"); break;
+                case "-":
+                    // Queremos hacer left - right (rcx - rax)
+                    emit("subq    %rax, %rcx"); // rcx = rcx - rax
+                    emit("movq    %rcx, %rax"); // Mueve el resultado a rax
+                    break;
+                case "*":
+                    emit("imulq   %rcx, %rax"); // rax = rcx * rax
+                    break;
                 case "/":
-                    emit("movq    %rax, %rbx");
-                    emit("movq    %rcx, %rax");
-                    emit("cqto");
-                    emit("idivq   %rbx");
+                    // El dividendo (izquierda) debe estar en %rax
+                    // El divisor (derecha) debe estar en otro registro (ej: %rbx)
+                    emit("movq    %rax, %rbx"); // Mueve el divisor (derecha) a rbx
+                    emit("movq    %rcx, %rax"); // Mueve el dividendo (izquierda) a rax
+                    emit("cqto");               // Extiende el signo de rax a rdx:rax
+                    emit("idivq   %rbx");       // rax = (rdx:rax) / rbx
+                    break;
+
+                // --- Operadores de Comparación ---
+                // Comparamos left (rcx) con right (rax)
+                case "==":
+                    emit("cmpq    %rax, %rcx"); // Compara rcx con rax
+                    emit("sete    %al");         // Pone 1 en %al si son iguales, 0 si no
+                    emit("movzbq  %al, %rax"); // Extiende el byte (%al) a 64 bits (%rax)
+                    break;
+                case "!=":
+                    emit("cmpq    %rax, %rcx");
+                    emit("setne   %al");       // Pone 1 en %al si NO son iguales
+                    emit("movzbq  %al, %rax");
+                    break;
+                case "<":
+                    emit("cmpq    %rax, %rcx"); // Compara si left < right
+                    emit("setl    %al");         // Pone 1 en %al si es "less"
+                    emit("movzbq  %al, %rax");
+                    break;
+                case "<=":
+                    emit("cmpq    %rax, %rcx"); // Compara si left <= right
+                    emit("setle   %al");       // Pone 1 en %al si es "less or equal"
+                    emit("movzbq  %al, %rax");
+                    break;
+                case ">":
+                    emit("cmpq    %rax, %rcx"); // Compara si left > right
+                    emit("setg    %al");         // Pone 1 en %al si es "greater"
+                    emit("movzbq  %al, %rax");
+                    break;
+                case ">=":
+                    emit("cmpq    %rax, %rcx"); // Compara si left >= right
+                    emit("setge   %al");       // Pone 1 en %al si es "greater or equal"
+                    emit("movzbq  %al, %rax");
+                    break;
+
+                // --- Operadores Lógicos (extra) ---
+                // Asume que 0 es falso y cualquier otro número es verdadero
+                case "&&":
+                    emit("cmpq    $0, %rax"); // Revisa el lado derecho
+                    emit("setne   %al");       // %al = (right != 0)
+                    emit("cmpq    $0, %rcx"); // Revisa el lado izquierdo
+                    emit("setne   %bl");       // %bl = (left != 0)
+                    emit("andb    %bl, %al");  // %al = %al && %bl
+                    emit("movzbq  %al, %rax"); // Extiende el resultado a rax
+                    break;
+                case "||":
+                    emit("cmpq    $0, %rax"); // Revisa el lado derecho
+                    emit("setne   %al");       // %al = (right != 0)
+                    emit("cmpq    $0, %rcx"); // Revisa el lado izquierdo
+                    emit("setne   %bl");       // %bl = (left != 0)
+                    emit("orb     %bl, %al");  // %al = %al || %bl
+                    emit("movzbq  %al, %rax"); // Extiende el resultado a rax
                     break;
             }
         } else if (e instanceof UnaryOpNode) {
@@ -590,12 +666,12 @@ class X86_64Generator implements ASTVisitor {
 
             switch (u.op) {
                 case "-":
-                    emit("negq    %rax");
+                    emit("negq    %rax"); // Niega el valor en %rax
                     break;
                 case "!":
-                    emit("cmpq    $0, %rax");
-                    emit("sete    %al");
-                    emit("movzbq  %al, %rax");
+                    emit("cmpq    $0, %rax");   // Compara %rax con 0
+                    emit("sete    %al");        // Pone 1 en %al si %rax ERA 0
+                    emit("movzbq  %al, %rax");  // Extiende %al a %rax
                     break;
             }
         }

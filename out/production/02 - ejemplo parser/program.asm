@@ -2,6 +2,14 @@ main:
         pushq   %rbp
         movq    %rsp, %rbp
         subq    $24, %rsp
+        movq    $1, %rax
+        movq    %rax, -8(%rbp)
+        movq    -8(%rbp), %rax
+        pushq   %rax
+        movq    $1, %rax
+        popq    %rcx
+        addq    %rcx, %rax
+        movq    %rax, -24(%rbp)
         movq    -8(%rbp), %rax
         pushq   %rax
         movq    $3, %rax
@@ -20,6 +28,9 @@ main:
         pushq   %rax
         movq    -24(%rbp), %rax
         popq    %rcx
+        cmpq    %rax, %rcx
+        sete    %al
+        movzbq  %al, %rax
         cmpq    $0, %rax
         je      L_else_0
         movq    $1, %rax
