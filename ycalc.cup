@@ -37,7 +37,7 @@ terminal ASSIGN, SEMI, LPAREN, RPAREN, LBRACE, RBRACE;
 
 /* ---------- No terminales ---------- */
 non terminal ProgramNode program;
-non terminal BlockNode block;     /* ⬅️ AGREGAR ESTA LÍNEA */
+non terminal BlockNode block;
 non terminal DeclListNode decls;
 non terminal DeclNode decl;
 non terminal StmtListNode stmts;
