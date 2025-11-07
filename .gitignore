@@ -1,0 +1,34 @@
+# Archivos compilados de Java
+*.class
+
+# Archivos generados por JFlex y CUP
+Lexer.java
+parser.java
+sym.java
+
+# Código ensamblador generado
+program.asm
+program
+program.exe
+
+# Directorios de salida
+out/
+bin/
+target/
+
+# Archivos de IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*~
+
+# Archivos de respaldo
+*.bak
+*_backup.txt

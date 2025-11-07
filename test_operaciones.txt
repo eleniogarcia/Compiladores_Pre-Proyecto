@@ -1,0 +1,31 @@
+int suma(int a, int b) {
+    return a + b;
+}
+
+int resta(int a, int b) {
+    return a - b;
+}
+
+int multiplica(int a, int b) {
+    return a * b;
+}
+
+int divide(int a, int b) {
+    if (b == 0) then {
+        return 0;
+    } else {
+        return a / b;
+    }
+}
+
+int main() {
+    int x = 10;
+    int y = 5;
+    
+    int resultadoSuma = suma(x, y);
+    int resultadoResta = resta(x, y);
+    int resultadoMulti = multiplica(x, y);
+    int resultadoDiv = divide(x, y);
+    
+    return resultadoSuma;
+}

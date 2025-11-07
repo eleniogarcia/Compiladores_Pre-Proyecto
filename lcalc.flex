@@ -33,7 +33,6 @@ dec_id         = [A-Za-z_][A-Za-z_0-9]*
 
     /* -------- Palabras reservadas -------- */
     "void"      { return symbol(sym.VOID); }
-    "main"      { return symbol(sym.MAIN); }
     "int"       { return symbol(sym.INT); }
     "if"        { return symbol(sym.IF); }
     "then"      { return symbol(sym.THEN); }
@@ -64,6 +63,7 @@ dec_id         = [A-Za-z_][A-Za-z_0-9]*
     ")"         { return symbol(sym.RPAREN); }
     "{"         { return symbol(sym.LBRACE); }
     "}"         { return symbol(sym.RBRACE); }
+    ","         { return symbol(sym.COMMA); }
 
     /* -------- Constantes numéricas -------- */
     {dec_int_lit} {

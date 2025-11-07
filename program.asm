@@ -1,47 +1,38 @@
+.text
+.globl main
+
+suma:
+        pushq   %rbp
+        movq    %rsp, %rbp
+        subq    $16, %rsp
+        movq    %rdi, -8(%rbp)
+        movq    %rsi, -16(%rbp)
+        movq    -8(%rbp), %rax
+        pushq   %rax
+        movq    -16(%rbp), %rax
+        popq    %rcx
+        addq    %rcx, %rax
+        leave
+        ret
+
 main:
         pushq   %rbp
         movq    %rsp, %rbp
-        subq    $24, %rsp
-        movq    $1, %rax
+        subq    $16, %rsp
+        movq    $4, %rax
         movq    %rax, -8(%rbp)
-        movq    -8(%rbp), %rax
-        pushq   %rax
-        movq    $1, %rax
-        popq    %rcx
-        addq    %rcx, %rax
-        movq    %rax, -24(%rbp)
-        movq    -8(%rbp), %rax
-        pushq   %rax
-        movq    $3, %rax
-        pushq   %rax
         movq    $2, %rax
-        popq    %rcx
-        imulq   %rcx, %rax
-        pushq   %rax
-        movq    -24(%rbp), %rax
-        popq    %rcx
-        imulq   %rcx, %rax
-        popq    %rcx
-        addq    %rcx, %rax
         movq    %rax, -16(%rbp)
+        # Preparando llamada a suma
         movq    -8(%rbp), %rax
+        movq    %rax, %rdi
+        movq    -16(%rbp), %rax
         pushq   %rax
-        movq    -24(%rbp), %rax
-        popq    %rcx
-        cmpq    %rax, %rcx
-        sete    %al
-        movzbq  %al, %rax
-        cmpq    $0, %rax
-        je      L_else_0
-        movq    $1, %rax
-        leave
-        ret
-        jmp     L_end_1
-        L_else_0:
-        movq    $2, %rax
-        leave
-        ret
-        L_end_1:
+        popq    %rsi
+        andq    $-16, %rsp
+        call    suma
+        movq    %rax, -8(%rbp)
         movq    $0, %rax
         leave
         ret
+

@@ -14,11 +14,23 @@ public class Main {
             root.accept(stb);
             System.out.println("Análisis semántico completado\n");
 
+            // Verificar si hay errores semánticos
+            if (stb.getErrorCount() > 0) {
+                System.err.println("\n❌ COMPILACIÓN ABORTADA: Se encontraron " + stb.getErrorCount() + " errores semánticos.");
+                System.err.println("Por favor corrija los errores antes de generar código.");
+                System.exit(1);
+            }
+
             // Etapa 3: Interpretación simbólica (opcional)
             System.out.println("=== Etapa 3: Ejecución simbólica ===");
-            Interpreter interp = new Interpreter();
-            root.accept(interp);
-            System.out.println("Interpretación finalizada\n");
+            try {
+                Interpreter interp = new Interpreter();
+                root.accept(interp);
+                System.out.println("Interpretación finalizada\n");
+            } catch (RuntimeException e) {
+                System.err.println("\n⚠️  Error durante la ejecución simbólica: " + e.getMessage());
+                System.err.println("Continuando con la generación de código...\n");
+            }
 
             // Etapa 4: Generación de código ensamblador (x86-64 para Windows)
             System.out.println("=== Etapa 4: Generación de código (x86-64 Windows) ===");
@@ -29,6 +41,13 @@ public class Main {
             try (PrintWriter out = new PrintWriter("program.asm")) {
                 out.print(asm);
             }
+            
+            System.out.println("\n✅ Código ensamblador generado exitosamente en 'program.asm'");
+            System.out.println("\nPara ensamblar y ejecutar:");
+            System.out.println("  gcc -o program program.asm");
+            System.out.println("  ./program");
+            System.out.println("  echo $?  # Ver código de retorno");
+            
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -1,0 +1,31 @@
+int cuadrado(int x) {
+    return x * x;
+}
+
+int sumaCuadrados(int a, int b) {
+    int cuadA = cuadrado(a);
+    int cuadB = cuadrado(b);
+    return cuadA + cuadB;
+}
+
+int potencia(int base, int exp) {
+    if (exp == 0) then {
+        return 1;
+    } else {
+        return base * potencia(base, exp - 1);
+    }
+}
+
+int main() {
+    int x = 3;
+    int y = 4;
+    
+    int resultado1 = sumaCuadrados(x, y);
+    int resultado2 = potencia(2, 5);
+    
+    if (resultado1 > resultado2) then {
+        return resultado1;
+    } else {
+        return resultado2;
+    }
+}

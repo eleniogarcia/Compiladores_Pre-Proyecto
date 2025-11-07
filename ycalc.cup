@@ -1,9 +1,10 @@
 /* ==========================================================
-   ycalc.cup - Parser para el lenguaje Mini
-   Construye el AST (no chequea semántica aquí)
+   ycalc.cup - Parser para el lenguaje Mini con FUNCIONES
+   Construye el AST con soporte para funciones
    ========================================================== */
 
 import java_cup.runtime.*;
+import java.util.*;
 
 parser code {:
     public void report_error(String message, Object info) {
@@ -29,21 +30,26 @@ parser code {:
 terminal String ID;
 terminal Integer NUMBER;
 
-terminal VOID, MAIN, INT;
+terminal VOID, INT;
 terminal IF, THEN, ELSE, WHILE, RETURN;
 terminal PLUS, MINUS, TIMES, DIVIDE;
 terminal AND, OR, EQEQ, LT, GT, NOT;
-terminal ASSIGN, SEMI, LPAREN, RPAREN, LBRACE, RBRACE;
+terminal ASSIGN, SEMI, LPAREN, RPAREN, LBRACE, RBRACE, COMMA;
 
 /* ---------- No terminales ---------- */
 non terminal ProgramNode program;
+non terminal FunctionListNode functions;
+non terminal FunctionNode function;
+non terminal String type;
+non terminal ParamListNode params, nonempty_params;
+non terminal ParamNode param;
 non terminal BlockNode block;
 non terminal DeclListNode decls;
 non terminal DeclNode decl;
 non terminal StmtListNode stmts;
 non terminal StmtNode stmt;
 non terminal ExprNode expr;
-non terminal ExprNode optinit;
+non terminal List<ExprNode> args, nonempty_args;
 
 /* ---------- Precedencias ---------- */
 precedence left OR;
@@ -54,15 +60,72 @@ precedence left TIMES, DIVIDE;
 precedence right NOT;
 
 /* ==========================================================
-   Gramática
+   Gramática con FUNCIONES
    ========================================================== */
 
-program ::= LBRACE decls:ds stmts:st RBRACE
+program ::= functions:fs
           {:
-              RESULT = new ProgramNode(ds, st);
-              System.out.println("Programa Mini válido ✅");
+              RESULT = new ProgramNode(fs);
+              System.out.println("Programa Mini con funciones válido ✅");
           :}
           ;
+
+/* ---------- Funciones ---------- */
+functions ::= function:f
+            {:
+                FunctionListNode fl = new FunctionListNode();
+                fl.add(f);
+                RESULT = fl;
+            :}
+            | functions:fl function:f
+            {:
+                fl.add(f);
+                RESULT = fl;
+            :}
+            ;
+
+function ::= type:t ID:name LPAREN params:p RPAREN block:b
+           {:
+               RESULT = new FunctionNode(t, name, p, b);
+           :}
+           ;
+
+type ::= INT
+       {: RESULT = "int"; :}
+       | VOID
+       {: RESULT = "void"; :}
+       ;
+
+/* ---------- Parámetros ---------- */
+params ::=
+         {: RESULT = new ParamListNode(); :}
+         | nonempty_params:p
+         {: RESULT = p; :}
+         ;
+
+nonempty_params ::= param:p
+                  {:
+                      ParamListNode pl = new ParamListNode();
+                      pl.add(p);
+                      RESULT = pl;
+                  :}
+                  | nonempty_params:pl COMMA param:p
+                  {:
+                      pl.add(p);
+                      RESULT = pl;
+                  :}
+                  ;
+
+param ::= INT ID:name
+        {: RESULT = new ParamNode("int", name); :}
+        ;
+
+/* ---------- Bloques ---------- */
+block ::= LBRACE decls:ds stmts:st RBRACE
+        {:
+            RESULT = new BlockNode(ds, st);
+        :}
+        ;
 
 /* ---------- Declaraciones ---------- */
 decls ::=
@@ -84,7 +147,6 @@ decl ::= INT ID:id SEMI
         :}
         ;
 
-
 /* ---------- Sentencias ---------- */
 stmts ::=
           {: RESULT = new StmtListNode(); :}
@@ -103,6 +165,10 @@ stmt ::= ID:id ASSIGN expr:e SEMI
         {:
             RESULT = new ReturnNode(e);
         :}
+        | RETURN SEMI
+        {:
+            RESULT = new ReturnNode(null);
+        :}
         | IF LPAREN expr:cond RPAREN THEN block:thenblk
         {:
             RESULT = new IfNode(cond, thenblk, null);
@@ -116,13 +182,6 @@ stmt ::= ID:id ASSIGN expr:e SEMI
             RESULT = new WhileNode(cond, body);
         :}
         ;
-/* ---------- Bloques ---------- */
-block ::= LBRACE decls:ds stmts:st RBRACE
-        {:
-            RESULT = new BlockNode(ds, st);
-        :}
-        ;
-
 
 /* ---------- Expresiones ---------- */
 expr ::=
@@ -138,6 +197,28 @@ expr ::=
         | NOT expr:e            {: RESULT = new UnaryOpNode("!", e); :}
         | MINUS expr:e          {: RESULT = new UnaryOpNode("-", e); :}
         | LPAREN expr:e RPAREN  {: RESULT = e; :}
+        | ID:name LPAREN args:a RPAREN
+        {: RESULT = new CallNode(name, a); :}
         | NUMBER:n              {: RESULT = new NumNode(n); :}
         | ID:id                 {: RESULT = new IdNode(id); :}
         ;
+
+/* ---------- Argumentos de llamadas a función ---------- */
+args ::=
+       {: RESULT = new ArrayList<ExprNode>(); :}
+       | nonempty_args:a
+       {: RESULT = a; :}
+       ;
+
+nonempty_args ::= expr:e
+                {:
+                    List<ExprNode> list = new ArrayList<ExprNode>();
+                    list.add(e);
+                    RESULT = list;
+                :}
+                | nonempty_args:list COMMA expr:e
+                {:
+                    list.add(e);
+                    RESULT = list;
+                :}
+                ;
