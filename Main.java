@@ -43,10 +43,6 @@ public class Main {
             }
             
             System.out.println("\n✅ Código ensamblador generado exitosamente en 'program.asm'");
-            System.out.println("\nPara ensamblar y ejecutar:");
-            System.out.println("  gcc -o program program.asm");
-            System.out.println("  ./program");
-            System.out.println("  echo $?  # Ver código de retorno");
             
         } catch (Exception e) {
             e.printStackTrace();

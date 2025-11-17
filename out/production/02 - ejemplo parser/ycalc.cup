@@ -30,7 +30,7 @@ parser code {:
 terminal String ID;
 terminal Integer NUMBER;
 
-terminal VOID, MAIN, INT;
+terminal VOID, INT;
 terminal IF, THEN, ELSE, WHILE, RETURN;
 terminal PLUS, MINUS, TIMES, DIVIDE;
 terminal AND, OR, EQEQ, LT, GT, NOT;
