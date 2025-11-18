@@ -1,6 +1,6 @@
-# 🚀 Compilador Mini - Versión con Funciones
+# 🚀 Compilador Mini 
 
-Compilador completo para el lenguaje imperativo **Mini** que traduce código fuente a código ensamblador x86-64 ejecutable, con soporte completo para funciones.
+Compilador completo para el lenguaje imperativo **Mini** que traduce código fuente a código x86-64 ejecutable, con soporte completo para funciones.
 
 ## ✨ Características Principales
 
@@ -56,10 +56,8 @@ javac -cp ".;java-cup-11b-runtime.jar" *.java
 # 4. Ejecutar el compilador (lee test.txt y genera program.asm)
 java -cp ".;java-cup-11b-runtime.jar" Main
 
-# 5. Ensamblar y ejecutar el código generado
-gcc -o program program.asm
-./program
-echo $?  # Ver código de retorno
+# 5. Ensamblador generado en 
+program.asm
 ```
 
 ### En Windows PowerShell
@@ -236,22 +234,6 @@ int main() {
 }
 ```
 
-### Test 2: Factorial Recursivo
-```c
-int factorial(int n) {
-    if (n == 0) then {
-        return 1;
-    } else {
-        return n * factorial(n - 1);
-    }
-}
-
-int main() {
-    int resultado = factorial(5);
-    return resultado;  // Retorna 120
-}
-```
-
 ### Test 3: Función Void
 ```c
 void imprime(int x) {
@@ -354,16 +336,7 @@ main:
 - ❌ No variables globales explícitas
 - ❌ Sin optimizaciones de código
 
-## 📚 Documentación Adicional
-
-Ver `DOCUMENTACION_ACTUALIZADA.md` para:
-- Explicación detallada de cada fase
-- Ejemplos de AST
-- Traza completa de ejecución
-- Referencia de instrucciones x86-64
-- Casos de prueba adicionales
-
-## 👥 Autores
+## 👥 Alumnos
 
 - **Elenio Garcia Bustamante**
 - **Germán Adrián Muñoz**
@@ -374,10 +347,6 @@ Ver `DOCUMENTACION_ACTUALIZADA.md` para:
 **Profesor:** Francisco Bavera  
 **Carrera:** Ingeniería en Sistemas de Información
 
-## 📄 Licencia
 
-Proyecto académico - Universidad Nacional de Villa Mercedes
 
----
 
-**🌟 "La compilación con funciones es el puente entre el pensamiento modular y la ejecución eficiente en hardware."**
