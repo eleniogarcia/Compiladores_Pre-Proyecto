@@ -1,19 +1,27 @@
-A small JFlex+Cup parser example 
+Universidad Nacional de Villa Mercedes
+ . Materia: Compiladores
+ . Profesor: Francisco Bavera
+ . Carrera: Ingeniería en Sistemas de Información
 
-To compile:
->jflex lcalc.flex
->java java_cup.Main < ycalc.cup
->javac Main.java
-
-To run:
->java Main test.txt
+Alumnos
+ . Elenio Garcia Bustamante
+ . Germán Adrián Muñoz
 
 
-Files:
+ Pasos para compilar
+    # 1. Generar el analizador léxico
+    java -jar jflex-full-1.9.1.jar lcalc.flex
 
-Main.java       demo of a main program
-README          this file
-lcalc.flex      the lexer spec
-ycalc.cup       the parser spec
-test.txt        sample input for testing
+    # 2. Generar el analizador sintáctico
+    java -jar java-cup-11b.jar -parser parser ycalc.cup
 
+    # 3. Compilar el proyecto Java
+    javac -cp ".;java-cup-11b-runtime.jar" *.java
+
+    # 4. Ejecutar el compilador (lee test.txt y genera program.asm)
+    java -cp ".;java-cup-11b-runtime.jar" Main
+
+    # 5. Ensamblador generado en
+    program.asm
+
+  Casos de prueba ponerlos en text.txt

@@ -1,54 +1,38 @@
 .text
 .globl main
 
-factorial:
+suma:
         pushq   %rbp
         movq    %rsp, %rbp
         subq    $16, %rsp
         movq    %rdi, -8(%rbp)
+        movq    %rsi, -16(%rbp)
         movq    -8(%rbp), %rax
         pushq   %rax
-        movq    $0, %rax
+        movq    -16(%rbp), %rax
         popq    %rcx
-        cmpq    %rax, %rcx
-        sete    %al
-        movzbq  %al, %rax
-        cmpq    $0, %rax
-        je      L_else_0
-        movq    $1, %rax
+        addq    %rcx, %rax
         leave
         ret
-        jmp     L_end_1
-L_else_0:
-        movq    -8(%rbp), %rax
-        pushq   %rax
-        # Preparando llamada a factorial
-        movq    -8(%rbp), %rax
-        pushq   %rax
-        movq    $1, %rax
-        popq    %rcx
-        subq    %rax, %rcx
-        movq    %rcx, %rax
-        movq    %rax, %rdi
-        andq    $-16, %rsp
-        call    factorial
-        popq    %rcx
-        imulq   %rcx, %rax
-        leave
-        ret
-L_end_1:
 
 main:
         pushq   %rbp
         movq    %rsp, %rbp
         subq    $16, %rsp
-        # Preparando llamada a factorial
-        movq    $5, %rax
-        movq    %rax, %rdi
-        andq    $-16, %rsp
-        call    factorial
+        movq    $4, %rax
         movq    %rax, -8(%rbp)
+        movq    $2, %rax
+        movq    %rax, -16(%rbp)
+        # Preparando llamada a suma
         movq    -8(%rbp), %rax
+        movq    %rax, %rdi
+        movq    -16(%rbp), %rax
+        pushq   %rax
+        popq    %rsi
+        andq    $-16, %rsp
+        call    suma
+        movq    %rax, -8(%rbp)
+        movq    $0, %rax
         leave
         ret
 
